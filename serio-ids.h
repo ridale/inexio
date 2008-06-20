@@ -108,7 +108,7 @@
 # define SERIO_FUJITSU		0x34
 #endif
 #ifndef SERIO_INEXIO
-# define SERIO_INEXIO		0x35
+# define SERIO_INEXIO		0x36
 #endif
 
 #endif

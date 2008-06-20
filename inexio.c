@@ -138,8 +138,8 @@ static int inexio_connect(struct serio *serio, struct serio_driver *drv)
 	input_dev->id.product = 0;
 	input_dev->id.version = 0x0001;
 	input_dev->dev.parent = &serio->dev;
-	input_dev->evbit[0] = BIT(EV_KEY) | BIT(EV_ABS);
-	input_dev->keybit[LONG(BTN_TOUCH)] = BIT(BTN_TOUCH);
+	input_dev->evbit[0] = BIT_MASK(EV_KEY) | BIT_MASK(EV_ABS);
+	input_dev->keybit[BIT_WORD(BTN_TOUCH)] = BIT_MASK(BTN_TOUCH);
 	input_set_abs_params(pinexio->dev, ABS_X, INEXIO_MIN_XC, INEXIO_MAX_XC, 0, 0);
 	input_set_abs_params(pinexio->dev, ABS_Y, INEXIO_MIN_YC, INEXIO_MAX_YC, 0, 0);
 
