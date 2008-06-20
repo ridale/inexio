@@ -1,7 +1,9 @@
 /*
  * iNexio serial touchscreen driver
  *
- * Copyright (c) 2004 Vojtech Pavlik
+ * Copyright (c) 2008 Richard Lemon
+ * Based on the mtouch driver (c) Vojtech Pavlik and Dan Streetman
+ *
  */
 
 /*
@@ -11,9 +13,6 @@
  */
 
 /*
- * 2005/02/19 Dan Streetman <ddstreet@ieee.org>
- *   Copied elo.c and edited for MicroTouch protocol
- *
  * 2008/06/19 Richard Lemon <richard@codelemon.com>
  *   Copied mtouch.c and edited for iNexio protocol
  */
@@ -28,7 +27,7 @@
 
 #define DRIVER_DESC	"iNexio serial touchscreen driver"
 
-MODULE_AUTHOR("Vojtech Pavlik <vojtech@ucw.cz>");
+MODULE_AUTHOR("Richard Lemon <richard@codelemon.com>");
 MODULE_DESCRIPTION(DRIVER_DESC);
 MODULE_LICENSE("GPL");
 
@@ -64,12 +63,11 @@ struct inexio {
 	char phys[32];
 };
 
-static void inexio_process_data(struct inexio *pinexio, struct pt_regs *regs)
+static void inexio_process_data(struct inexio *pinexio)
 {
 	struct input_dev *dev = pinexio->dev;
 
 	if (INEXIO_FORMAT_LENGTH == ++pinexio->idx) {
-		input_regs(dev, regs);
 		input_report_abs(dev, ABS_X, INEXIO_GET_XC(pinexio->data));
 		input_report_abs(dev, ABS_Y, INEXIO_GET_YC(pinexio->data));
 		input_report_key(dev, BTN_TOUCH, INEXIO_GET_TOUCHED(pinexio->data));
@@ -80,14 +78,14 @@ static void inexio_process_data(struct inexio *pinexio, struct pt_regs *regs)
 }
 
 static irqreturn_t inexio_interrupt(struct serio *serio,
-		unsigned char data, unsigned int flags, struct pt_regs *regs)
+		unsigned char data, unsigned int flags)
 {
 	struct inexio* pinexio = serio_get_drvdata(serio);
 
 	pinexio->data[pinexio->idx] = data;
 
 	if (INEXIO_RESPONSE_BEGIN_BYTE&pinexio->data[0])
-		inexio_process_data(pinexio, regs);
+		inexio_process_data(pinexio);
 	else
 		printk(KERN_DEBUG "inexio.c: unknown/unsynchronized data from device, byte %x\n",pinexio->data[0]);
 
@@ -126,20 +124,20 @@ static int inexio_connect(struct serio *serio, struct serio_driver *drv)
 	input_dev = input_allocate_device();
 	if (!pinexio || !input_dev) {
 		err = -ENOMEM;
-		goto fail;
+		goto fail1;
 	}
 
 	pinexio->serio = serio;
 	pinexio->dev = input_dev;
-	sprintf(pinexio->phys, "%s/input0", serio->phys);
+	snprintf(pinexio->phys, sizeof(pinexio->phys), "%s/input0", serio->phys);
 
-	input_dev->private = pinexio;
 	input_dev->name = "iNexio Serial TouchScreen";
 	input_dev->phys = pinexio->phys;
 	input_dev->id.bustype = BUS_RS232;
 	input_dev->id.vendor = SERIO_INEXIO;
 	input_dev->id.product = 0;
 	input_dev->id.version = 0x0001;
+	input_dev->dev.parent = &serio->dev;
 	input_dev->evbit[0] = BIT(EV_KEY) | BIT(EV_ABS);
 	input_dev->keybit[LONG(BTN_TOUCH)] = BIT(BTN_TOUCH);
 	input_set_abs_params(pinexio->dev, ABS_X, INEXIO_MIN_XC, INEXIO_MAX_XC, 0, 0);
@@ -149,14 +147,17 @@ static int inexio_connect(struct serio *serio, struct serio_driver *drv)
 
 	err = serio_open(serio, drv);
 	if (err)
-		goto fail;
+		goto fail2;
 
-	input_register_device(pinexio->dev);
+	err = input_register_device(pinexio->dev);
+	if (err)
+		goto fail3;
 
 	return 0;
 
- fail:	serio_set_drvdata(serio, NULL);
-	input_free_device(input_dev);
+ fail3:	serio_close(serio);
+ fail2:	serio_set_drvdata(serio, NULL);
+ fail1:	input_free_device(input_dev);
 	kfree(pinexio);
 	return err;
 }
@@ -194,8 +195,7 @@ static struct serio_driver inexio_drv = {
 
 static int __init inexio_init(void)
 {
-	serio_register_driver(&inexio_drv);
-	return 0;
+	return serio_register_driver(&inexio_drv);
 }
 
 static void __exit inexio_exit(void)
