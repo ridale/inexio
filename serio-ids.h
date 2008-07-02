@@ -107,8 +107,11 @@
 #ifndef SERIO_FUJITSU
 # define SERIO_FUJITSU		0x34
 #endif
+#ifndef SERIO_ZHENHUA
+# define SERIO_ZHENHUA		0x36
+#endif
 #ifndef SERIO_INEXIO
-# define SERIO_INEXIO		0x36
+# define SERIO_INEXIO		0x37
 #endif
 
 #endif
