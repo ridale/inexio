@@ -2,6 +2,7 @@ inexio
 ======
 
 This is a kernel level driver for the inexio touch panels, and was tested on the 42" panel. These panels are usually overlayed onto a 42" LCD or Plasma screen.
+This repo is imported from my original at http://repo.or.cz/w/inexio.git
 
 There is a proper Kernel driver in the mainline kernel to handle the smaller 17" touchscreens and it should be preferred over this driver.
 
